@@ -624,6 +624,26 @@ def get_default_dns_servers(rack_controller, subnet, use_rack_proxy=True):
         dns_servers = [
             server for server in dns_servers if server != default_region_ip
         ] + [default_region_ip]
+
+        # Checks if the subnet vlan has a relay
+    if subnet.vlan.relay_vlan_id:
+
+        ### Gets all managed vlans for the rack controller
+        ### The idea of this is to get all the ip addresses of the vlan of the rack controller
+        ### the `vlan` class is the one that is doing the relaying
+        rack_interfaces = get_interfaces_with_ip_on_vlan(rack_controller, vlan, 4)
+        for interface in rack_interfaces:
+            print("###INTERFACE DIR: {}".format(dir(interface)))
+            print("###INTERFACE IN RACK_INTERFACES: {}".format(interface.ip_addresses))
+            # -> returns an error -> print("###INTERFACE GET IP ADDRESS FOR INTERFACE: {}".format(get_ip_address_for_interface(interface, vlan)))
+
+        ### Keeping logic commented for now, but this is the main idea, to get the ip addresses on the vlan interfaces on each rack
+        ### And add it to the list of dns_servers, stuck for now.
+        #for rack in racks:
+        #    rack_ips += get_ip_address_for_rack_controller(rack_controller, subnet.vlan)
+        #    print("RACK_IPS: {}".format(rack_ips))
+        #if rack_ips:
+        #    dns_servers += rack_ips
     # If no DNS servers were found give the region IP. This won't go through
     # the rack but its better than nothing.
     if not dns_servers:
