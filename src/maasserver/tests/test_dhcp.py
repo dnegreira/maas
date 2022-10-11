@@ -1137,6 +1137,30 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
         servers = get_default_dns_servers(rack, subnet)
         self.assertThat(servers, Equals([IPAddress("192.168.200.1")]))
 
+    def test_dns_servers_when_relaying(self):
+        mock_get_source_address = self.patch(dhcp, "get_source_address")
+        mock_get_source_address.return_value = "10.20.30.1"
+        rack = factory.make_RackController(interface=False)
+        vlan1_primary = factory.make_VLAN(dhcp_on=True)
+        vlan2_secondary = factory.make_VLAN(
+            dhcp_on=False, relay_vlan=vlan1_primary
+        )
+        subnet1 = factory.make_Subnet(vlan=vlan1_primary, cidr="10.20.30.0/24")
+        subnet2 = factory.make_Subnet(
+            vlan=vlan2_secondary, cidr="10.20.31.0/24"
+        )
+        rack_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=vlan1_primary, node=rack
+        )
+        rack_address = factory.make_StaticIPAddress(
+            interface=rack_interface,
+            subnet=subnet1,
+            alloc_type=IPADDRESS_TYPE.STICKY,
+        )
+        dns_servers = dhcp.get_default_dns_servers(rack, subnet2, False)
+        self.assertThat(dns_servers, Equals([IPAddress('10.20.30.1')]))
+
+
     def test_no_default_region_ip(self):
         self.patch(dhcp, "get_source_address").return_value = None
         vlan = factory.make_VLAN()
