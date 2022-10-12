@@ -37,6 +37,7 @@ from maasserver.models import (
     Subnet,
     VLAN,
 )
+from maasserver.models.subnet import get_boot_rackcontroller_ips
 from maasserver.rpc import getAllClients, getClientFor, getRandomClient
 from maasserver.secrets import SecretManager, SecretNotFound
 from maasserver.utils.orm import transactional
@@ -619,7 +620,15 @@ def get_default_dns_servers(rack_controller, subnet, use_rack_proxy=True):
             ]
         elif rack_ips:
             dns_servers = rack_ips
-    elif default_region_ip in dns_servers:
+    if subnet.vlan.relay_vlan_id:
+        # Add the IP address for the rack controllers from the relay subnet
+        dns_servers.extend(
+            [
+                IPAddress(rack_ip)
+                for rack_ip in get_boot_rackcontroller_ips(subnet)
+            ]
+        )
+    if default_region_ip in dns_servers:
         # Make sure the region DNS server comes last
         dns_servers = [
             server for server in dns_servers if server != default_region_ip
