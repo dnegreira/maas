@@ -1121,9 +1121,9 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
         # Regression test for LP:1881133
         mock_get_source_address = self.patch(dhcp, "get_source_address")
         mock_get_source_address.return_value = "192.168.122.209"
-        vlan = factory.make_VLAN()
-        subnet = factory.make_Subnet(vlan=vlan, cidr="192.168.200.0/24")
         rack = factory.make_RackController(interface=False)
+        vlan = factory.make_VLAN(dhcp_on=True, primary_rack=rack)
+        subnet = factory.make_Subnet(vlan=vlan, cidr="192.168.200.0/24")
         iface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, vlan=vlan, node=rack
         )
@@ -1143,7 +1143,7 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
         rack = factory.make_RackController(interface=False)
         vlan1_primary = factory.make_VLAN(dhcp_on=True, primary_rack=rack)
         vlan2_secondary = factory.make_VLAN(
-            primary_rack=rack, dhcp_on=True, relay_vlan=vlan1_primary
+            primary_rack=rack, dhcp_on=False, relay_vlan=vlan1_primary
         )
         subnet1 = factory.make_Subnet(
             vlan=vlan1_primary, vid=10, cidr="10.20.40.0/24"
@@ -1172,11 +1172,10 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
             alloc_type=IPADDRESS_TYPE.STICKY,
             ip="10.20.40.1",
         )
-        dns_servers = dhcp.get_default_dns_servers(rack, subnet2, False)
-        self.assertThat(
-            dns_servers,
-            Equals([IPAddress("10.20.40.1"), IPAddress("10.20.30.1")]),
+        dns_servers = dhcp.get_default_dns_servers(
+            rack, subnet2, use_rack_proxy=True
         )
+        self.assertEqual(dns_servers, [IPAddress("10.20.40.1")])
 
     def test_no_default_region_ip(self):
         self.patch(dhcp, "get_source_address").return_value = None
